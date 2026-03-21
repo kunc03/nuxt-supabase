@@ -1,75 +1,65 @@
-# Nuxt Minimal Starter
+# Glassmorphism Product Catalog
 
-Look at the [Nuxt documentation](https://nuxt.com/docs/getting-started/introduction) to learn more.
+A modern product catalog built with **Nuxt** and **Supabase**, featuring a sleek Glassmorphism UI and an admin dashboard.
 
-## Setup
+## 🚀 Features
 
-Make sure to install dependencies:
+-   ✨ **Glassmorphism UI**: Premium visual aesthetics with smooth gradients and backdrop filters.
+-   🛍️ **Product Catalog**: Browse and filter products by category.
+-   🔐 **Authentication**: User/Admin login handled via Supabase Auth.
+-   🛠️ **Admin Dashboard**: Manage products (Add, Edit, Delete).
+-   ⚡ **Edge Functions**: Custom backend logic for product management (CRUD).
+
+## 🛠️ Tech Stack
+
+-   **Frontend**: [Nuxt](https://nuxt.com/) (Vue 3)
+-   **Database & Auth**: [Supabase](https://supabase.com/)
+-   **Styling**: Vanilla CSS (Modern utilities & glassmorphism)
+
+## ⚙️ Setup & Installation
+
+### 1. Clone & Install Dependencies
 
 ```bash
-# npm
+# Install Node.js dependencies
 npm install
-
-# pnpm
-pnpm install
-
-# yarn
-yarn install
-
-# bun
-bun install
 ```
 
-## Development Server
+### 2. Environment Variables
 
-Start the development server on `http://localhost:3000`:
+Create a `.env` file in the root directory and add your Supabase credentials:
 
 ```bash
-# npm
+SUPABASE_URL="your-supabase-url"
+SUPABASE_KEY="your-anon-or-service-role-key"
+```
+
+> [!NOTE]
+> See `.env.example` for reference.
+
+### 3. Supabase Backend (Optional / Local Dev)
+
+If you are using the Supabase CLI for local development:
+
+```bash
+# Start local Supabase instance
+npx supabase start
+```
+
+This will run database migrations from `supabase/migrations` and initialize Edge Functions.
+
+### 4. Run Development Server
+
+```bash
 npm run dev
-
-# pnpm
-pnpm dev
-
-# yarn
-yarn dev
-
-# bun
-bun run dev
 ```
 
-## Production
+The application will be available at `http://localhost:3000`.
 
-Build the application for production:
+## 📂 Project Structure
 
-```bash
-# npm
-npm run build
+-   `app/pages/`: Nuxt pages (Catalog, Login, Admin).
+-   `supabase/`: Supabase configuration, migrations, and Edge Functions.
+-   `composables/`: Shared Vue composables (e.g., `useApi`).
 
-# pnpm
-pnpm build
-
-# yarn
-yarn build
-
-# bun
-bun run build
-```
-
-Locally preview production build:
-
-```bash
-# npm
-npm run preview
-
-# pnpm
-pnpm preview
-
-# yarn
-yarn preview
-
-# bun
-bun run preview
-```
-
-Check out the [deployment documentation](https://nuxt.com/docs/getting-started/deployment) for more information.
+---
