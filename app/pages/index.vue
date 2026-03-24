@@ -1,13 +1,33 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import useApi from '~/../composables/useApi'
 
 // supabase 
 const { fetchProducts } = useApi();
+const supabase = useSupabaseClient();
 
 const { data: productsSupabase, pending, refresh } = await useAsyncData('products', () => 
   fetchProducts()
 )
+
+// Realtime subscription
+let channel = null;
+
+onMounted(() => {
+  channel = supabase
+    .channel('public:products')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+      console.log('Realtime update:', payload)
+      refresh() // Trigger useAsyncData refresh
+    })
+    .subscribe()
+})
+
+onUnmounted(() => {
+  if (channel) {
+    supabase.removeChannel(channel)
+  }
+})
 
 const categories = computed(() => {
   if (!productsSupabase.value) return []
@@ -54,13 +74,9 @@ const paginatedProducts = computed(() => {
   return filteredProducts.value.slice(start, end)
 })
 
-const changePage = (page) => {
-  if (page >= 1 && page <= totalPages.value) {
-    currentPage.value = page
-    // Smooth scroll back to products section top
-    window.scrollTo({ top: 250, behavior: 'smooth' })
-  }
-}
+watch(currentPage, () => {
+  window.scrollTo({ top: 250, behavior: 'smooth' })
+})
 </script>
 
 <template>

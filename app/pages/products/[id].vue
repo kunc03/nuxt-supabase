@@ -1,10 +1,10 @@
 <script setup>
-import { useRoute } from 'vue-router'
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import useApi from '~/../composables/useApi'
 
 const route = useRoute()
 const { fetchProduct } = useApi()
+const client = useSupabaseClient()
 
 // Ambil ID dari router params
 const productId = route.params.id
@@ -13,6 +13,48 @@ const productId = route.params.id
 const { data: product, pending, error } = await useAsyncData(`product-${productId}`, () => 
   fetchProduct(productId)
 )
+
+const viewerCount = ref(1)
+let channel = null
+
+// Realtime Presence & Live Update Setup
+onMounted(() => {
+  channel = client.channel(`product_views_${productId}`)
+
+  // 1. Presence (Viewer Count)
+  channel
+    .on('presence', { event: 'sync' }, () => {
+      const state = channel.presenceState()
+      viewerCount.value = Object.keys(state).length
+    })
+    // 2. Postgres Changes (Live Details)
+    .on('postgres_changes', { 
+      event: 'UPDATE', 
+      schema: 'public', 
+      table: 'products', 
+      filter: `id=eq.${productId}` 
+    }, (payload) => {
+      console.log('Product Live Update:', payload)
+      if (product.value) {
+        // Merge updates
+        product.value = { ...product.value, ...payload.new }
+      }
+    })
+    .subscribe(async (status) => {
+      if (status === 'SUBSCRIBED') {
+        await channel.track({ 
+          user_id: Math.random().toString(36).substring(7), // Anon user identification
+          viewing_at: new Date().toISOString() 
+        })
+      }
+    })
+})
+
+onUnmounted(() => {
+  if (channel) {
+    client.removeChannel(channel)
+  }
+})
 
 // Logic untuk switch gambar utama
 const selectedImage = ref('')
@@ -90,6 +132,10 @@ watch(product, (newVal) => {
               <div class="stat-item">
                 <span class="stat-label">Stok tersedia</span>
                 <span class="stat-value">{{ product.stock ?? 0 }} pcs</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Sedang melihat</span>
+                <span class="stat-value viewers-count">🔥 {{ viewerCount }} orang</span>
               </div>
             </div>
           </div>
@@ -298,6 +344,8 @@ watch(product, (newVal) => {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   padding-top: 20px;
   margin-bottom: auto;
+  display: flex;
+  gap: 30px;
 }
 
 .stat-item {
@@ -315,6 +363,11 @@ watch(product, (newVal) => {
   font-size: 1.1rem;
   font-weight: 600;
   color: #e2e8f0;
+}
+
+.viewers-count {
+  color: #f97316;
+  font-weight: 700;
 }
 
 /* Footer Section */

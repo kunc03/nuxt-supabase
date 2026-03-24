@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import useApi from '~/../composables/useApi'
 import * as XLSX from 'xlsx' // <--- Membaca file excel
 
@@ -8,10 +8,29 @@ const client = useSupabaseClient()
 const router = useRouter()
 const { fetchProducts, addProduct, updateProduct, deleteProduct } = useApi()
 
-// Auth Guard
+let channel = null
+
+// Auth Guard & Realtime Setup
 onMounted(() => {
   if (!user.value) {
     router.push('/login')
+    return
+  }
+
+  // Realtime subscription
+  channel = client
+    .channel('public:products-admin')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
+      console.log('Admin Realtime update:', payload)
+      // If view is list, reloading is good.
+      loadProducts() 
+    })
+    .subscribe()
+})
+
+onUnmounted(() => {
+  if (channel) {
+    client.removeChannel(channel)
   }
 })
 
