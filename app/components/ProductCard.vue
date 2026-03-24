@@ -1,33 +1,45 @@
 <script setup>
+import { useCart } from '~/../composables/useCart'
+
 defineProps({
   product: {
     type: Object,
     required: true
   }
 })
+
+const { addToCart } = useCart()
 </script>
 
 <template>
-  <div class="product-card glass fade-in">
-    <div class="image-container">
-      <img :src="product.image_url || product.image" :alt="product.title" class="product-image" loading="lazy" />
-      <div class="overlay">
-        <span class="rating">★ {{ product.rate ?? product.rating?.rate }}</span>
-      </div>
-    </div>
-    <div class="product-content">
-      <div class="category-badge">{{ product.category }}</div>
-      <h3 class="product-title" :title="product.title">{{ product.title }}</h3>
-      <p v-if="product.sub_title" class="product-subtitle">{{ product.sub_title }}</p>
-      <p class="product-description">{{ product.description }}</p>
-      <div class="product-footer">
-        <div class="price-tag">
-          <span class="currency">Rp</span>
-          <span class="price">{{ (product.price || 0).toLocaleString('id-ID') }}</span>
+  <div class="card-link-wrapper">
+    <NuxtLink :to="`/products/${product.id}`" class="product-card glass fade-in">
+      <div class="image-container">
+        <img :src="product.image_url || product.image" :alt="product.title" class="product-image" loading="lazy" />
+        <div class="overlay">
+          <span class="rating">★ {{ product.rate ?? product.rating?.rate }}</span>
         </div>
-        <button class="view-btn">View</button>
       </div>
-    </div>
+      <div class="product-content">
+        <div class="category-badge">{{ product.category }}</div>
+        <h3 class="product-title" :title="product.title">{{ product.title }}</h3>
+        <p v-if="product.sub_title" class="product-subtitle">{{ product.sub_title }}</p>
+        <p class="product-description">{{ product.description }}</p>
+        <div class="product-footer">
+          <div class="price-tag">
+            <span class="currency">Rp</span>
+            <span class="price">{{ (product.price || 0).toLocaleString('id-ID') }}</span>
+          </div>
+          <button @click.stop.prevent="addToCart(product)" class="cart-btn" title="Tambah ke Keranjang">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="21" r="1"></circle>
+              <circle cx="20" cy="21" r="1"></circle>
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </NuxtLink>
   </div>
 </template>
 
@@ -61,17 +73,16 @@ defineProps({
 
 .product-image {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  max-width: auto;
-  max-height: 100%;
-  object-fit: contain;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   transition: transform 0.5s ease;
 }
 
 .product-card:hover .product-image {
-  transform: translate(-50%, -50%) scale(1.1);
+  transform: scale(1.1);
 }
 
 .overlay {
@@ -173,22 +184,33 @@ defineProps({
   color: #f8fafc;
 }
 
-.view-btn {
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(168, 85, 247, 0.1));
-  border: 1px solid rgba(168, 85, 247, 0.2);
+.cart-btn {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(168, 85, 247, 0.15));
+  border: 1px solid rgba(168, 85, 247, 0.3);
   color: #f8fafc;
-  padding: 8px 16px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   border-radius: 12px;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  z-index: 10;
 }
 
-.view-btn:hover {
+.cart-btn:hover {
   background: linear-gradient(135deg, #6366f1, #a855f7);
   box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
   transform: translateY(-2px);
   border-color: transparent;
+}
+
+.card-link-wrapper {
+  text-decoration: none;
+  display: block;
+  height: 100%;
 }
 </style>

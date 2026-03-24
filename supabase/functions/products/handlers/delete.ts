@@ -1,3 +1,4 @@
+// deno-lint-ignore-file
 import { corsHeaders } from "../../_shared/cors.ts";
 
 export const handleDelete = async (req: Request, supabaseClient: any, id: string | null) => {
@@ -8,10 +9,11 @@ export const handleDelete = async (req: Request, supabaseClient: any, id: string
     );
   }
 
+  const ids = id.split(",");
   const { data, error } = await supabaseClient
     .from("products")
     .delete()
-    .eq("id", id)
+    .in("id", ids)
     .select();
 
   if (error) throw error;

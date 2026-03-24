@@ -11,6 +11,16 @@ const useApi = () => {
     return data;
   };
 
+  // Fungsi untuk mengambil data satu produk via Edge Function
+  const fetchProduct = async (id: string) => {
+    const { data, error } = await client.functions.invoke(`products?id=${id}`, {
+      method: "GET",
+    });
+    if (error) throw error;
+
+    return data;
+  };
+
   // Fungsi untuk menambah data via Edge Function
   const addProduct = async (productData: any) => {
     const { data, error } = await client.functions.invoke("products", {
@@ -31,9 +41,10 @@ const useApi = () => {
     return data;
   };
 
-  // Fungsi untuk menghapus data via Edge Function
-  const deleteProduct = async (id: string) => {
-    const { data, error } = await client.functions.invoke(`products?id=${id}`, {
+  // Fungsi untuk menghapus data via Edge Function (Mendukung Bulk Delete)
+  const deleteProduct = async (id: string | string[]) => {
+    const idsParam = Array.isArray(id) ? id.join(",") : id;
+    const { data, error } = await client.functions.invoke(`products?id=${idsParam}`, {
       method: "DELETE",
     });
     if (error) throw error;
@@ -42,6 +53,7 @@ const useApi = () => {
 
   return {
     fetchProducts,
+    fetchProduct,
     addProduct,
     updateProduct,
     deleteProduct,

@@ -1,6 +1,7 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import useApi from '~/../composables/useApi'
+import * as XLSX from 'xlsx' // <--- Membaca file excel
 
 const user = useSupabaseUser()
 const client = useSupabaseClient()
@@ -52,10 +53,13 @@ const handleLogout = async () => {
   router.push('/login')
 }
 
+const imagesText = ref('')
+
 const openAddForm = () => {
   isEditing.value = false
   selectedProductId.value = null
   resetForm()
+  imagesText.value = ''
   message.value = { text: '', type: '' }
   currentView.value = 'form'
 }
@@ -73,6 +77,7 @@ const openEditForm = (product) => {
     stock: product.stock,
     rate: product.rate
   }
+  imagesText.value = product.images ? product.images.join('\n') : '' // <--- Load images ke text
   message.value = { text: '', type: '' }
   currentView.value = 'form'
 }
@@ -88,6 +93,7 @@ const resetForm = () => {
     stock: null,
     rate: null
   }
+  imagesText.value = '' // <--- Reset gambar detail
 }
 
 const handleDelete = async (id) => {
@@ -125,7 +131,8 @@ const handleSubmit = async () => {
       ...form.value,
       price: form.value.price !== null && form.value.price !== '' && form.value.price !== undefined ? Number(form.value.price) : null,
       stock: form.value.stock !== null && form.value.stock !== '' && form.value.stock !== undefined ? Number(form.value.stock) : null,
-      rate: form.value.rate !== null && form.value.rate !== '' && form.value.rate !== undefined ? Number(form.value.rate) : null
+      rate: form.value.rate !== null && form.value.rate !== '' && form.value.rate !== undefined ? Number(form.value.rate) : null,
+      images: imagesText.value.split('\n').map(u => u.trim()).filter(u => u.length > 0) // <--- Convert ke array
     }
 
     if (isEditing.value) {
@@ -147,6 +154,105 @@ const handleSubmit = async () => {
     message.value = { text: error.message || 'Gagal menyimpan produk.', type: 'error' }
   } finally {
     loading.value = false
+  }
+}
+// Excel Handlers
+const excelInput = ref(null)
+const importLoading = ref(false)
+
+const triggerExcelUpload = () => {
+  excelInput.value?.click()
+}
+
+const handleExcelUpload = async (event) => {
+  const target = event.target;
+  const file = target.files?.[0];
+  if (!file) return;
+
+  importLoading.value = true;
+  message.value = { text: '', type: '' };
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = new Uint8Array(e.target?.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+      if (jsonData.length === 0) {
+        throw new Error('File Excel kosong atau tidak memiliki data.');
+      }
+
+      // Map excel keys ke column payload
+      const productsData = jsonData.map((row) => ({
+        title: row.Title || row.title,
+        sub_title: row['Sub Title'] || row.sub_title || '',
+        description: row.Description || row.description || '',
+        category: row.Category || row.category || '',
+        image_url: row['Image URL (Thumbnail)'] || row['Image URL'] || row.image_url || '',
+        price: row.Price !== undefined ? Number(row.Price) : (row.price !== undefined ? Number(row.price) : null),
+        stock: row.Stock !== undefined ? Number(row.Stock) : (row.stock !== undefined ? Number(row.stock) : null),
+        rate: row.Rate !== undefined ? Number(row.Rate) : (row.rate !== undefined ? Number(row.rate) : null),
+        images: row['Images (Gallery)'] 
+          ? row['Images (Gallery)'].split(',').map((u) => u.trim()) 
+          : (row.Images ? row.Images.split(',').map((u) => u.trim()) : [])
+      }));
+
+      await addProduct(productsData);
+
+      message.value = { text: `Berhasil mengimpor ${productsData.length} produk!`, type: 'success' };
+      await loadProducts();
+    } catch (error) {
+      console.error('Error importing excel:', error);
+      message.value = { text: 'Gagal mengimpor excel: ' + error.message, type: 'error' };
+    } finally {
+      importLoading.value = false;
+      if (excelInput.value) excelInput.value.value = ''; // Reset
+    }
+  };
+
+  reader.readAsArrayBuffer(file);
+}
+
+const downloadTemplate = () => {
+  const headers = [['Title', 'Sub Title', 'Description', 'Category', 'Price', 'Stock', 'Rate', 'Image URL (Thumbnail)', 'Images (Gallery)']];
+  const worksheet = XLSX.utils.aoa_to_sheet(headers);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Template Produk");
+  XLSX.writeFile(workbook, "template_produk.xlsx");
+}
+// Bulk Delete Handlers
+const selectedProducts = ref([])
+
+const isAllSelected = computed({
+  get: () => products.value.length > 0 && selectedProducts.value.length === products.value.length,
+  set: (val) => {
+    if (val) {
+      selectedProducts.value = products.value.map(p => p.id)
+    } else {
+      selectedProducts.value = []
+    }
+  }
+})
+
+const handleBulkDelete = async () => {
+  if (selectedProducts.value.length === 0) return;
+  if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedProducts.value.length} produk terpilih?`)) return;
+
+  loading.value = true;
+  try {
+    await deleteProduct(selectedProducts.value);
+    selectedProducts.value = []; // Clear selection
+    message.value = { text: 'Produk berhasil dihapus secara massal!', type: 'success' };
+    await loadProducts();
+  } catch (error) {
+    console.error('Error bulk deleting:', error);
+    message.value = { text: 'Gagal menghapus secara massal: ' + error.message, type: 'error' };
+  } finally {
+    loading.value = false;
   }
 }
 </script>
@@ -178,18 +284,51 @@ const handleSubmit = async () => {
       <div v-if="currentView === 'list'" class="view-container">
         <div class="view-header">
           <h2 class="section-title">Daftar Produk</h2>
-          <button @click="openAddForm" class="add-btn">
-            + Tambah Produk
-          </button>
+          <div class="header-buttons">
+            <button @click="downloadTemplate" class="download-btn">
+              📥 Template Excel
+            </button>
+            <button @click="triggerExcelUpload" class="import-btn" :disabled="importLoading">
+              <span v-if="importLoading">Importing...</span>
+              <span v-else>📊 Import Excel</span>
+            </button>
+            <button @click="openAddForm" class="add-btn">
+              + Tambah Produk
+            </button>
+          </div>
+          <input type="file" ref="excelInput" @change="handleExcelUpload" class="hidden-input" accept=".xlsx,.xls,.csv" />
         </div>
 
         <div v-if="productsPending" class="loading-state">
           <p>Memuat produk...</p>
         </div>
 
-        <div v-else-if="products.length > 0" class="products-list glass">
-          <div v-for="product in products" :key="product.id" class="product-item">
-            <div class="product-img">
+        <div v-else-if="products.length > 0">
+          <!-- Bulk Actions Toolbar -->
+          <div class="bulk-actions-toolbar glass">
+            <div class="toolbar-left">
+              <label class="checkbox-container">
+                <input type="checkbox" v-model="isAllSelected" />
+                <span class="checkmark"></span>
+                <span class="label-text">Pilih Semua ({{ selectedProducts.length }})</span>
+              </label>
+            </div>
+            <div class="toolbar-right">
+              <button v-if="selectedProducts.length > 0" @click="handleBulkDelete" class="delete-bulk-btn" :disabled="loading">
+                ❌ Hapus Terpilih
+              </button>
+            </div>
+          </div>
+
+          <div class="products-list glass">
+            <div v-for="product in products" :key="product.id" class="product-item">
+              <div class="select-checkbox">
+                <label class="checkbox-container">
+                  <input type="checkbox" :value="product.id" v-model="selectedProducts" />
+                  <span class="checkmark"></span>
+                </label>
+              </div>
+              <div class="product-img">
               <img :src="product.image_url || 'https://via.placeholder.com/60'" alt="Product Image" />
             </div>
             <div class="product-info">
@@ -202,6 +341,7 @@ const handleSubmit = async () => {
             <div class="product-actions">
               <button @click="openEditForm(product)" class="edit-btn">Edit</button>
               <button @click="handleDelete(product.id)" class="delete-btn" :disabled="loading">Hapus</button>
+            </div>
             </div>
           </div>
         </div>
@@ -249,6 +389,12 @@ const handleSubmit = async () => {
               </div>
             </div>
 
+            <!-- Detail Images Array Input -->
+            <div class="form-group">
+              <label for="images">Detail Images (Satu URL per baris)</label>
+              <textarea id="images" v-model="imagesText" rows="3" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"></textarea>
+            </div>
+
             <div class="form-grid three-cols">
               <div class="form-group">
                 <label for="price">Harga</label>
@@ -284,10 +430,9 @@ const handleSubmit = async () => {
 
 <style scoped>
 .page-container {
-  max-width: 1000px;
-  margin: 0 auto;
   padding: 40px 20px 80px 20px;
   position: relative;
+  min-height: 100vh;
 }
 
 .ambient-glow {
@@ -336,6 +481,7 @@ const handleSubmit = async () => {
 .gradient-text {
   background: linear-gradient(135deg, #6366f1, #a855f7);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -606,11 +752,176 @@ input:focus, textarea:focus {
   transform: translateY(-1px);
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
+  .product-item {
+    display: grid;
+    grid-template-columns: 50px 1fr;
+    gap: 12px;
+    align-items: center;
+    position: relative;
+  }
+  
+  .product-info {
+    grid-column: 2 / -1;
+  }
+
+  .product-price {
+    grid-column: 2 / -1;
+    text-align: left;
+    margin-top: -4px;
+    font-size: 0.9rem;
+  }
+
+  .product-actions {
+    grid-column: span 2;
+    width: 100%;
+    justify-content: flex-end;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    padding-top: 8px;
+    margin-top: 4px;
+  }
+
   .form-grid { grid-template-columns: 1fr; }
   .form-grid.three-cols { grid-template-columns: 1fr; }
   .form-actions { flex-direction: column; }
   .header-section { flex-direction: column; align-items: flex-start; gap: 16px; }
   .header-actions { align-self: flex-end; }
+}
+.header-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.import-btn {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.import-btn:hover:not(:disabled) {
+  background: rgba(16, 185, 129, 0.2);
+  transform: translateY(-1px);
+}
+
+.import-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hidden-input {
+  display: none;
+}
+.download-btn {
+  background: rgba(99, 102, 241, 0.1);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 10px 20px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.download-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+  transform: translateY(-1px);
+}
+/* Bulk Delete Styles */
+.bulk-actions-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  margin-bottom: 16px;
+  background: rgba(30, 41, 59, 0.4);
+  border-radius: 12px;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  position: relative;
+  cursor: pointer;
+  font-size: 0.9rem;
+  user-select: none;
+  gap: 10px;
+}
+
+.checkbox-container input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+  height: 0;
+  width: 0;
+}
+
+.checkmark {
+  height: 18px;
+  width: 18px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  display: inline-block;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.checkbox-container:hover input ~ .checkmark {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.checkbox-container input:checked ~ .checkmark {
+  background: linear-gradient(135deg, #6366f1, #a855f7);
+  border-color: transparent;
+}
+
+.checkmark:after {
+  content: "";
+  position: absolute;
+  display: none;
+  left: 6px;
+  top: 2px;
+  width: 4px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+.checkbox-container input:checked ~ .checkmark:after {
+  display: block;
+}
+
+.delete-bulk-btn {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-bulk-btn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.3);
+}
+
+.select-checkbox {
+  display: flex;
+  align-items: center;
+  padding-right: 12px;
 }
 </style>

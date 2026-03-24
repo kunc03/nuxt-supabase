@@ -1,5 +1,7 @@
+// deno-lint-ignore-file
 import { corsHeaders } from "../../_shared/cors.ts";
 
+// deno-lint-ignore no-explicit-any
 export const handlePut = async (req: Request, supabaseClient: any, id: string | null) => {
   if (!id) {
     return new Response(
@@ -19,6 +21,7 @@ export const handlePut = async (req: Request, supabaseClient: any, id: string | 
   if (body.price !== undefined && body.price !== null) updateData.price = Number(body.price);
   if (body.stock !== undefined && body.stock !== null) updateData.stock = Number(body.stock);
   if (body.rate !== undefined && body.rate !== null) updateData.rate = Number(body.rate);
+  if (body.images !== undefined) updateData.images = body.images;
 
   const { data, error } = await supabaseClient
     .from("products")

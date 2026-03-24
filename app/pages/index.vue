@@ -9,8 +9,6 @@ const { data: productsSupabase, pending, refresh } = await useAsyncData('product
   fetchProducts()
 )
 
-console.log(productsSupabase.value) 
-
 const categories = computed(() => {
   if (!productsSupabase.value) return []
   const cats = productsSupabase.value.map(p => p.category)
@@ -82,10 +80,9 @@ const filteredProducts = computed(() => {
 
 <style scoped>
 .page-container {
-  max-width: 1200px;
-  margin: 0 auto;
   padding: 0 20px 80px 20px;
   position: relative;
+  min-height: 100vh;
 }
 
 /* Ambient Glow Backgrounds */

@@ -1,6 +1,17 @@
 <script setup>
 import { ref } from 'vue'
 
+definePageMeta({
+  middleware: [
+    async (to, from) => {
+      const user = useSupabaseUser()
+      if (user.value) {
+        return navigateTo('/admin') // Jika sudah login, lempar ke admin
+      }
+    }
+  ]
+})
+
 const client = useSupabaseClient()
 const router = useRouter()
 
@@ -26,7 +37,9 @@ const handleSubmit = async () => {
 
     if (error) throw error
 
-    router.push('/admin')
+    // Gunakan window.location agar browser sinkronisasi cookie secara penuh
+    window.location.href = '/admin'
+    return
   } catch (error) {
     console.error('Login error:', error)
     errorMessage.value = error.message || 'Gagal login. Periksa email dan password Anda.'
@@ -94,7 +107,6 @@ const handleSubmit = async () => {
 
 <style scoped>
 .page-container {
-  max-width: 480px;
   margin: 0 auto;
   padding: 80px 20px;
   position: relative;
@@ -143,6 +155,7 @@ const handleSubmit = async () => {
 .gradient-text {
   background: linear-gradient(135deg, #6366f1, #a855f7);
   -webkit-background-clip: text;
+  background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
@@ -154,6 +167,9 @@ const handleSubmit = async () => {
 .form-wrapper {
   padding: 32px;
   border-radius: 24px;
+  max-width: 450px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .form-title {
@@ -205,6 +221,7 @@ input {
   font-family: inherit;
   font-size: 0.95rem;
   transition: all 0.2s;
+  width: 100%;
 }
 
 input:focus {

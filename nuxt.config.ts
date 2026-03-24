@@ -1,5 +1,12 @@
+import tailwindcss from '@tailwindcss/vite'
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  vite: {
+    plugins: [
+      tailwindcss(),
+    ],
+  },
   compatibilityDate: "2025-07-15",
   devtools: { enabled: true },
 
@@ -13,9 +20,13 @@ export default defineNuxtConfig({
 
   supabase: {
     redirect: false, // Kita handle redirect manual di client
+    cookieOptions: {
+      secure: false, // Mengizinkan cookie disimpan di HTTP (penting untuk IP lokal)
+    }
   },
 
   app: {
+    pageTransition: { name: 'page', mode: 'out-in' },
     head: {
       title: "Glassmorphism Product Catalog",
       meta: [
