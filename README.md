@@ -59,6 +59,11 @@ The application will be available at `http://localhost:3000`.
 ## 📂 Project Structure
 
 -   `app/pages/`: Nuxt pages (Catalog, Login, Admin).
+-   `app/components/`:
+    -   `CategoryFilter.vue`, `ProductCard.vue`, `LoadingSkeleton.vue` (General)
+    -   `atoms/`: basic style atoms (upcoming structure).
+    -   `molecules/`: assemblies of atoms (e.g., `MoleculesAppPagination`).
+    -   `organisms/`: complex sections (e.g., `OrganismsHeroSection`, `OrganismsProductForm`, `OrganismsBulkActionsToolbar`).
 -   `supabase/`: Supabase configuration, migrations, and Edge Functions.
 -   `composables/`: Shared Vue composables (e.g., `useApi`).
 
