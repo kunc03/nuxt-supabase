@@ -39,3 +39,30 @@
     gap: 16px;
   }
 }
+
+/* Search Bar Styles */
+.search-bar-container {
+  margin-bottom: 24px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 14px 20px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  color: #f8fafc;
+  font-size: 1rem;
+  backdrop-filter: blur(12px);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.search-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+}
+
+.search-input::placeholder {
+  color: #64748b;
+}

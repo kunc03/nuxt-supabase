@@ -41,6 +41,7 @@ const productsPending = pending
 const activeCategory = ref('all')
 const currentPage = ref(1)
 const itemsPerPage = ref(12) // 12 items per page works well for multi-column grids
+const searchQuery = ref('') // 🔍 Pencarian
 
 const handleSelectCategory = (category) => {
   activeCategory.value = category
@@ -49,19 +50,35 @@ const handleSelectCategory = (category) => {
 
 const filteredProducts = computed(() => {
   if (!productsSupabase.value) return []
-  if (activeCategory.value === 'all') return productsSupabase.value
+  
+  let result = productsSupabase.value
 
-  const active = activeCategory.value
-  // If active contains '>', it's an exact "Parent > Sub" match
-  if (active.includes('>')) {
-    return productsSupabase.value.filter(p => p.category === active)
+  // 1. Filter dari Kategori
+  if (activeCategory.value !== 'all') {
+    const active = activeCategory.value
+    if (active.includes('>')) {
+      result = result.filter(p => p.category === active)
+    } else {
+      result = result.filter(p => {
+        if (!p.category) return false
+        const parent = p.category.split('>')[0].trim()
+        return parent === active
+      })
+    }
   }
-  // Otherwise it's a parent-only selection → match all products in that parent
-  return productsSupabase.value.filter(p => {
-    if (!p.category) return false
-    const parent = p.category.split('>')[0].trim()
-    return parent === active
-  })
+
+  // 2. Filter dari Search Query
+  if (searchQuery.value.trim() !== '') {
+    const query = searchQuery.value.toLowerCase().trim()
+    result = result.filter(p => {
+      const titleMatch = p.title?.toLowerCase().includes(query)
+      const subtitleMatch = p.sub_title?.toLowerCase().includes(query)
+      const descMatch = p.description?.toLowerCase().includes(query)
+      return titleMatch || subtitleMatch || descMatch
+    })
+  }
+
+  return result
 })
 
 const totalPages = computed(() => {
@@ -85,6 +102,17 @@ watch(currentPage, () => {
 
     <main class="main-content">
       <section class="filter-section">
+        <!-- Search Bar -->
+        <div class="search-bar-container">
+          <input 
+            v-model="searchQuery" 
+            type="text" 
+            placeholder="Cari produk berdasarkan nama atau deskripsi..." 
+            class="search-input"
+            @input="currentPage = 1" 
+          />
+        </div>
+
         <h2 class="section-title">Browse Categories</h2>
         <div v-if="categoriesPending" class="categories-skeleton"></div>
         <CategoryFilter 
