@@ -177,6 +177,23 @@ export const useCartStore = () => {
     return cartProductIds.value.includes(productId);
   };
 
+  const checkoutCart = async () => {
+    const { data: authData } = await client.auth.getUser();
+    const userId = authData?.user?.id || user.value?.id;
+    if (!userId) return false;
+
+    try {
+      const { error } = await client.from("carts").delete().eq("user_id", userId);
+      if (error) throw error;
+      
+      clearCart();
+      return true;
+    } catch (error) {
+      console.error("Error during checkout:", error);
+      return false;
+    }
+  };
+
   return {
     cartItems,
     cartProductIds,
@@ -188,5 +205,6 @@ export const useCartStore = () => {
     removeFromCart,
     isInCart,
     clearCart,
+    checkoutCart,
   };
 };

@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCartStore } from '~/../composables/useCartStore'
 
-const { pending, cartItems, fetchCartItems, removeFromCart, updateQuantity } = useCartStore()
+const { pending, cartItems, fetchCartItems, removeFromCart, updateQuantity, checkoutCart } = useCartStore()
 
 onMounted(() => {
   fetchCartItems()
@@ -11,6 +11,9 @@ onMounted(() => {
 const showConfirmModal = ref(false)
 const itemToDelete = ref(null)
 const isDeleting = ref(false)
+
+const showSuccess = ref(false)
+const isCheckingOut = ref(false)
 
 const openConfirmModal = (cartId) => {
   itemToDelete.value = cartId
@@ -36,6 +39,18 @@ const totalPrice = computed(() => {
     return total + (price * item.quantity)
   }, 0)
 })
+
+const handleCheckout = async () => {
+  isCheckingOut.value = true
+  // Simulate a small delay for "professional" feel (processing payment)
+  await new Promise(resolve => setTimeout(resolve, 1500))
+  
+  const success = await checkoutCart()
+  if (success) {
+    showSuccess.value = true
+  }
+  isCheckingOut.value = false
+}
 </script>
 
 <template>
@@ -54,7 +69,14 @@ const totalPrice = computed(() => {
     </header>
 
     <main class="main-content fade-in">
-      <div v-if="pending" class="loading-state glass">
+      <div v-if="showSuccess" class="empty-state success-state glass">
+        <div class="success-icon">✨</div>
+        <h2>Pesanan Berhasil!</h2>
+        <p>Terima kasih telah berbelanja. Pesanan Anda sedang kami proses.</p>
+        <NuxtLink to="/" class="action-btn primary">Kembali ke Katalog</NuxtLink>
+      </div>
+
+      <div v-else-if="pending" class="loading-state glass">
         <p>Memuat keranjang...</p>
       </div>
 
@@ -106,8 +128,13 @@ const totalPrice = computed(() => {
             <span class="grand-total">Rp {{ totalPrice.toLocaleString('id-ID') }}</span>
            </div>
 
-          <button class="action-btn primary w-full">
-            Beli Sekarang (Rp {{ totalPrice.toLocaleString('id-ID') }})
+          <button 
+            class="action-btn primary w-full" 
+            @click="handleCheckout" 
+            :disabled="isCheckingOut"
+          >
+            <span v-if="isCheckingOut">Memproses...</span>
+            <span v-else>Beli Sekarang (Rp {{ totalPrice.toLocaleString('id-ID') }})</span>
           </button>
         </div>
       </div>

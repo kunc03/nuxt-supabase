@@ -77,6 +77,22 @@
   font-size: 1.5rem;
 }
 
+.success-state {
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  background: rgba(30, 41, 59, 0.6);
+}
+
+.success-icon {
+  font-size: 5rem;
+  margin-bottom: 24px;
+  animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
 .cart-grid {
   display: grid;
   grid-template-columns: 1fr 350px;

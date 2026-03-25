@@ -82,6 +82,18 @@ const addToCart = async () => {
   await cartStore.addToCart(Number(productId) || productId)
   isAddingToCart.value = false
 }
+
+const buyNow = async () => {
+  if (!user.value) {
+    router.push('/login')
+    return
+  }
+
+  isAddingToCart.value = true
+  await cartStore.addToCart(Number(productId) || productId)
+  isAddingToCart.value = false
+  router.push('/cart')
+}
 </script>
 
 <template>
@@ -177,8 +189,9 @@ const addToCart = async () => {
                   <CartIcon :is-added="cartStore.isInCart(Number(productId) || productId)" width="24" height="24" />
                 </template>
               </button>
-              <button class="action-btn primary">
-                Beli Sekarang
+              <button class="action-btn primary" @click="buyNow" :disabled="isAddingToCart">
+                <span v-if="isAddingToCart">Memproses...</span>
+                <span v-else>Beli Sekarang</span>
               </button>
             </div>
           </div>
