@@ -52,12 +52,25 @@ const useApi = () => {
     return data;
   };
 
+  // Fungsi untuk mengambil Audit Logs langsung dari tabel DB (Diproteksi RLS Admin)
+  const fetchLogs = async () => {
+    const { data, error } = await client
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50); // Batasi 50 terakhir saja untuk performa
+      
+    if (error) throw error;
+    return data;
+  };
+
   return {
     fetchProducts,
     fetchProduct,
     addProduct,
     updateProduct,
     deleteProduct,
+    fetchLogs, // Tambahkan di return
   };
 };
 

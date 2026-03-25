@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx' // <--- Membaca file excel
 const user = useSupabaseUser()
 const client = useSupabaseClient()
 const router = useRouter()
-const { fetchProducts, addProduct, updateProduct, deleteProduct } = useApi()
+const { fetchProducts, addProduct, updateProduct, deleteProduct, fetchLogs } = useApi()
 
 let channel = null
 
@@ -146,6 +146,20 @@ watch(searchQuery, () => {
     loadProducts()
   }, 500)
 })
+
+const auditLogs = ref([])
+const auditLogsPending = ref(false)
+
+const loadLogs = async () => {
+  auditLogsPending.value = true
+  try {
+    auditLogs.value = await fetchLogs()
+  } catch (error) {
+    console.error('Gagal memuat log:', error)
+  } finally {
+    auditLogsPending.value = false
+  }
+}
 
 const handleLogout = async () => {
   await client.auth.signOut()
@@ -381,6 +395,16 @@ const confirmBulkDelete = async () => {
         {{ message.text }}
       </div>
 
+      <!-- Tabs Navigasi -->
+      <div v-if="currentView !== 'form'" class="admin-tabs">
+        <button @click="currentView = 'list'" :class="{ active: currentView === 'list' }" class="tab-btn">
+          📦 Produk
+        </button>
+        <button @click="currentView = 'audit_logs'; loadLogs()" :class="{ active: currentView === 'audit_logs' }" class="tab-btn">
+          🕒 Log Aktivitas
+        </button>
+      </div>
+
       <!-- List View -->
       <div v-if="currentView === 'list'" class="view-container">
         
@@ -497,6 +521,55 @@ const confirmBulkDelete = async () => {
 
         <div v-else class="empty-state glass">
           <p>Belum ada produk.</p>
+        </div>
+      </div>
+
+      <!-- Audit Logs View -->
+      <div v-else-if="currentView === 'audit_logs'" class="view-container">
+        <div class="view-header">
+          <h2 class="section-title">Riwayat Aktivitas</h2>
+        </div>
+        
+        <div class="logs-table-wrapper">
+          <table v-if="auditLogs.length > 0" class="logs-table">
+            <thead>
+              <tr>
+                <th>Waktu</th>
+                <th>Tabel</th>
+                <th>Aksi</th>
+                <th>Data Lama</th>
+                <th>Data Baru</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="log in auditLogs" :key="log.id">
+                <td>{{ new Date(log.created_at).toLocaleString('id-ID') }}</td>
+                <td><code>{{ log.table_name }}</code></td>
+                <td>
+                  <span :class="['action-badge', log.action.toLowerCase()]">
+                    {{ log.action }}
+                  </span>
+                </td>
+                <td>
+                  <details v-if="log.old_record" class="json-details">
+                    <summary>Lihat Data</summary>
+                    <pre class="json-content"><code>{{ JSON.stringify(log.old_record, null, 2) }}</code></pre>
+                  </details>
+                  <span v-else style="color: #64748b; font-size: 0.8rem;">-</span>
+                </td>
+                <td>
+                  <details v-if="log.new_record" class="json-details">
+                    <summary>Lihat Data</summary>
+                    <pre class="json-content"><code>{{ JSON.stringify(log.new_record, null, 2) }}</code></pre>
+                  </details>
+                  <span v-else style="color: #64748b; font-size: 0.8rem;">-</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-else class="empty-logs">
+            <p>Belum ada riwayat aktivitas tercatat.</p>
+          </div>
         </div>
       </div>
 
@@ -683,5 +756,110 @@ const confirmBulkDelete = async () => {
   .admin-search-input {
     width: 100%;
   }
+}
+
+/* Admin Tabs */
+.admin-tabs {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  background: rgba(30, 41, 59, 0.4);
+  padding: 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(10px);
+  width: fit-content;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab-btn:hover {
+  color: #e2e8f0;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.tab-btn.active {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+/* Audit Logs Table */
+.logs-table-wrapper {
+  background: rgba(30, 41, 59, 0.3);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.logs-table th {
+  background: rgba(15, 23, 42, 0.6);
+  padding: 12px 16px;
+  color: #94a3b8;
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.logs-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  color: #e2e8f0;
+}
+
+.action-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.action-badge.insert { background: rgba(34, 197, 94, 0.15); color: #4ade80; }
+.action-badge.update { background: rgba(234, 179, 8, 0.15); color: #fde047; }
+.action-badge.delete { background: rgba(239, 68, 68, 0.15); color: #f87171; }
+
+.json-details summary {
+  cursor: pointer;
+  color: #818cf8;
+  font-size: 0.8rem;
+}
+
+.json-content {
+  background: rgba(15, 23, 42, 0.5);
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 0.75rem;
+  overflow-x: auto;
+  max-width: 400px;
+}
+
+.empty-logs {
+  padding: 48px;
+  text-align: center;
+  color: #94a3b8;
+  font-style: italic;
 }
 </style>
