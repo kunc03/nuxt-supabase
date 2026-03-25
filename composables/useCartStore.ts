@@ -13,10 +13,18 @@ export const useCartStore = () => {
   );
   const pending = useState<boolean>("global-cart-pending", () => false);
 
+  const clearCart = () => {
+    cartItems.value = [];
+    cartProductIds.value = [];
+  };
+
   const fetchCartItems = async () => {
     const { data: authData } = await client.auth.getUser();
     const userId = authData?.user?.id;
-    if (!userId) return;
+    if (!userId) {
+      clearCart();
+      return;
+    }
 
     pending.value = true;
     try {
@@ -51,7 +59,10 @@ export const useCartStore = () => {
   const fetchCartProductIds = async () => {
     const { data: authData } = await client.auth.getUser();
     const userId = authData?.user?.id;
-    if (!userId) return;
+    if (!userId) {
+      clearCart();
+      return;
+    }
 
     try {
       const { data, error } = await client
@@ -176,5 +187,6 @@ export const useCartStore = () => {
     updateQuantity,
     removeFromCart,
     isInCart,
+    clearCart,
   };
 };

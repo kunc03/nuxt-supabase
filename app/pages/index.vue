@@ -10,6 +10,7 @@ const user = useSupabaseUser(); // Tambahkan user state
 
 // Fungsi Logout
 const handleLogout = async () => {
+  cartStore.clearCart()
   await supabase.auth.signOut()
 }
 
