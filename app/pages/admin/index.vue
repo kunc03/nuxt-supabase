@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx' // <--- Membaca file excel
 const user = useSupabaseUser()
 const client = useSupabaseClient()
 const router = useRouter()
-const { fetchProducts, addProduct, updateProduct, deleteProduct, fetchLogs } = useApi()
+const { fetchProducts, addProduct, updateProduct, deleteProduct, fetchLogs, searchAi, generateEmbedding } = useApi()
 
 let channel = null
 
@@ -124,12 +124,17 @@ const fetchStats = async () => {
 }
 
 const searchQuery = ref('')
+const isAiSearchEnabled = ref(false)
 let searchTimeout = null
 
 const loadProducts = async () => {
   productsPending.value = true
   try {
-    products.value = await fetchProducts(searchQuery.value) // Gunakan parameter search
+    if (isAiSearchEnabled.value && searchQuery.value.trim() !== '') {
+      products.value = await searchAi(searchQuery.value)
+    } else {
+      products.value = await fetchProducts(searchQuery.value)
+    }
     await fetchStats() // Tetap ambil statistik
   } catch (error) {
     console.error('Gagal memuat produk:', error)
@@ -138,6 +143,12 @@ const loadProducts = async () => {
     productsPending.value = false
   }
 }
+
+watch(isAiSearchEnabled, () => {
+  if (searchQuery.value.trim() !== '') {
+    loadProducts()
+  }
+})
 
 // Watcher untuk pencarian Debounce (mencegah spam request)
 watch(searchQuery, () => {
@@ -253,9 +264,17 @@ const handleFormSubmit = async (payload) => {
     if (isEditing.value) {
       await updateProduct(selectedProductId.value, formattedPayload)
       message.value = { text: 'Produk berhasil diperbarui!', type: 'success' }
+      try {
+        await generateEmbedding(selectedProductId.value, `${formattedPayload.title} ${formattedPayload.description || ''}`)
+      } catch (err) { console.error('Gagal generate embedding:', err) }
     } else {
-      await addProduct(formattedPayload)
+      const newProduct = await addProduct(formattedPayload)
       message.value = { text: 'Produk berhasil ditambahkan!', type: 'success' }
+      if (newProduct && newProduct.length > 0) {
+        try {
+          await generateEmbedding(newProduct[0].id, `${formattedPayload.title} ${formattedPayload.description || ''}`)
+        } catch (err) { console.error('Gagal generate embedding:', err) }
+      }
     }
     
     await loadProducts()
@@ -444,15 +463,23 @@ const confirmBulkDelete = async () => {
           <div class="view-header-left">
             <h2 class="section-title">Daftar Produk</h2>
             
-            <!-- Pencarian Native -->
+            <!-- Pencarian AI & Native -->
             <div class="admin-search-box">
               <input 
                 v-model="searchQuery" 
                 type="text" 
-                placeholder="Cari nama, deskripsi..." 
+                :placeholder="isAiSearchEnabled ? 'Tanya AI (cth: sepatu lari)...' : 'Cari nama, deskripsi...'" 
                 class="admin-search-input" 
+                :class="{ 'ai-active': isAiSearchEnabled }"
               />
-              <span class="search-icon">🔍</span>
+              <button 
+                @click="isAiSearchEnabled = !isAiSearchEnabled" 
+                class="ai-toggle-btn" 
+                :class="{ active: isAiSearchEnabled }"
+                title="Gunakan AI Semantic Search"
+              >
+                ✨
+              </button>
             </div>
           </div>
           <div class="header-buttons">
@@ -745,6 +772,35 @@ const confirmBulkDelete = async () => {
   right: 12px;
   font-size: 0.9rem;
   opacity: 0.6;
+}
+
+.admin-search-input.ai-active {
+  border-color: rgba(168, 85, 247, 0.4);
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.1);
+}
+
+.ai-toggle-btn {
+  position: absolute;
+  right: 6px;
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  padding: 4px 6px;
+  cursor: pointer;
+  opacity: 0.4;
+  transition: all 0.3s ease;
+  border-radius: 6px;
+}
+
+.ai-toggle-btn:hover {
+  opacity: 0.8;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.ai-toggle-btn.active {
+  opacity: 1;
+  background: rgba(168, 85, 247, 0.2);
+  transform: scale(1.1);
 }
 
 @media (max-width: 768px) {

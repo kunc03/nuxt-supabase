@@ -64,13 +64,35 @@ const useApi = () => {
     return data;
   };
 
+  // Fungsi untuk melakukan Semantic Search ke Edge Function AI
+  const searchAi = async (query: string) => {
+    const { data, error } = await client.functions.invoke("ai-search", {
+      method: "POST",
+      body: { action: "search", query },
+    });
+    if (error) throw error;
+    return data.results; // Mengembalikan array produk yang mirip
+  };
+
+  // Fungsi untuk trigger Generate Embedding pada satu produk
+  const generateEmbedding = async (id: string, text: string) => {
+    const { data, error } = await client.functions.invoke("ai-search", {
+      method: "POST",
+      body: { action: "embed_product", id, text },
+    });
+    if (error) throw error;
+    return data;
+  };
+
   return {
     fetchProducts,
     fetchProduct,
     addProduct,
     updateProduct,
     deleteProduct,
-    fetchLogs, // Tambahkan di return
+    fetchLogs,
+    searchAi,
+    generateEmbedding,
   };
 };
 
