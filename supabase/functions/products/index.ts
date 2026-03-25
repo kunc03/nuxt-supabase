@@ -35,10 +35,11 @@ serve(async (req: Request) => {
     const method = req.method;
     const url = new URL(req.url);
     const id = url.searchParams.get("id");
+    const q = url.searchParams.get("q"); // Ambil Query Pencarian
 
     switch (method) {
       case "GET":
-        return await handleGet(req, supabaseClient, id);
+        return await handleGet(req, supabaseClient, id, q);
       case "POST":
         return await handlePost(req, supabaseClient);
       case "PUT":

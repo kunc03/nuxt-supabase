@@ -1,9 +1,10 @@
 const useApi = () => {
   const client = useSupabaseClient();
 
-  // Fungsi untuk mengambil data via Edge Function
-  const fetchProducts = async () => {
-    const { data, error } = await client.functions.invoke("products", {
+  // Fungsi untuk mengambil data via Edge Function (Mendukung Search)
+  const fetchProducts = async (search?: string) => {
+    const path = search ? `products?q=${encodeURIComponent(search)}` : "products";
+    const { data, error } = await client.functions.invoke(path, {
       method: "GET",
     });
     if (error) throw error;

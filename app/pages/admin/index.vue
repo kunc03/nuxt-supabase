@@ -123,11 +123,14 @@ const fetchStats = async () => {
   }
 }
 
+const searchQuery = ref('')
+let searchTimeout = null
+
 const loadProducts = async () => {
   productsPending.value = true
   try {
-    products.value = await fetchProducts()
-    await fetchStats() // Ambil statistik bersamaan
+    products.value = await fetchProducts(searchQuery.value) // Gunakan parameter search
+    await fetchStats() // Tetap ambil statistik
   } catch (error) {
     console.error('Gagal memuat produk:', error)
     message.value = { text: 'Gagal memuat produk: ' + (error.message || error), type: 'error' }
@@ -135,6 +138,14 @@ const loadProducts = async () => {
     productsPending.value = false
   }
 }
+
+// Watcher untuk pencarian Debounce (mencegah spam request)
+watch(searchQuery, () => {
+  if (searchTimeout) clearTimeout(searchTimeout)
+  searchTimeout = setTimeout(() => {
+    loadProducts()
+  }, 500)
+})
 
 const handleLogout = async () => {
   await client.auth.signOut()
@@ -406,7 +417,20 @@ const confirmBulkDelete = async () => {
         </div>
 
         <div class="view-header">
-          <h2 class="section-title">Daftar Produk</h2>
+          <div class="view-header-left">
+            <h2 class="section-title">Daftar Produk</h2>
+            
+            <!-- Pencarian Native -->
+            <div class="admin-search-box">
+              <input 
+                v-model="searchQuery" 
+                type="text" 
+                placeholder="Cari nama, deskripsi..." 
+                class="admin-search-input" 
+              />
+              <span class="search-icon">🔍</span>
+            </div>
+          </div>
           <div class="header-buttons">
             <button @click="downloadTemplate" class="download-btn">
               📥 Template Excel
@@ -608,5 +632,56 @@ const confirmBulkDelete = async () => {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
+}
+
+/* Admin Search Box */
+.view-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.admin-search-input {
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  padding-right: 36px;
+  color: #e2e8f0;
+  font-size: 0.85rem;
+  width: 240px;
+  transition: all 0.2s;
+}
+
+.admin-search-input:focus {
+  outline: none;
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(15, 23, 42, 0.6);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.search-icon {
+  position: absolute;
+  right: 12px;
+  font-size: 0.9rem;
+  opacity: 0.6;
+}
+
+@media (max-width: 768px) {
+  .view-header-left {
+    width: 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .admin-search-input {
+    width: 100%;
+  }
 }
 </style>

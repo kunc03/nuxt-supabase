@@ -4,6 +4,7 @@ export const handleGet = async (
   req: Request,
   supabaseClient: any,
   id: string | null,
+  q: string | null,
 ) => {
   if (id) {
     const { data, error } = await supabaseClient
@@ -19,9 +20,17 @@ export const handleGet = async (
     });
   } else {
     try {
-      const { data, error } = await supabaseClient
-        .from("products")
-        .select("*");
+      let query = supabaseClient.from("products").select("*");
+      
+      if (q) {
+        // Ganti tanda koma (jika ada) degan spasi agar tidak merusak logika pohon/tree .or() Postgrest
+        const safeQ = q.replace(/,/g, " ");
+        
+        // Memadukan Pencarian Teks Penuh (plfts) dan pencarian parsial (ILIKE)
+        query = query.or(`fts_vector.plfts.${safeQ},title.ilike.%${safeQ}%,description.ilike.%${safeQ}%`);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return new Response(JSON.stringify(data), {
