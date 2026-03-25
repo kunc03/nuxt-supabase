@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import useApi from '~/../composables/useApi'
+import { useCartStore } from '~/../composables/useCartStore'
 
 // supabase 
 const { fetchProducts } = useApi();
@@ -16,13 +17,16 @@ const handleLogout = async () => {
 const isAdmin = computed(() => user.value?.user_metadata?.role === 'admin')
 
 const { data: productsSupabase, pending, refresh } = await useAsyncData('products', () => 
-  fetchProducts()
+  fetchProducts(), { deep: false }
 )
 
-// Realtime subscription
+const cartStore = useCartStore()
+const cartProductIds = cartStore.cartProductIds
+
 let channel = null;
 
 onMounted(() => {
+  cartStore.fetchCartProductIds()
   channel = supabase
     .channel('public:products')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
@@ -114,6 +118,10 @@ watch(currentPage, () => {
           <div v-else class="nav-avatar-fallback">{{ user.email ? user.email[0].toUpperCase() : 'U' }}</div>
         </div>
         
+        <NuxtLink to="/cart" class="nav-btn keranjang-link" title="Keranjang">
+          <CartIcon :is-added="false" width="18" height="18" />
+          <span v-if="cartProductIds.length > 0" class="cart-badge">{{ cartProductIds.length }}</span>
+        </NuxtLink>
         <NuxtLink v-if="isAdmin" to="/admin" class="nav-btn admin-link">Dashboard</NuxtLink>
         <button @click="handleLogout" class="nav-btn logout-link">Logout</button>
       </div>
@@ -155,7 +163,7 @@ watch(currentPage, () => {
             <ProductCard 
               v-for="product in paginatedProducts" 
               :key="product.id" 
-              :product="product" 
+              :product="product"
             />
           </div>
 
@@ -176,144 +184,3 @@ watch(currentPage, () => {
 </template>
 
 <style scoped src="~/assets/css/pages/index.css"></style>
-<style scoped>
-/* Top Nav / Header Styles */
-.top-nav {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.nav-user-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(30, 41, 59, 0.5);
-  padding: 6px 12px;
-  border-radius: 50px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  backdrop-filter: blur(12px);
-}
-
-.nav-avatar, .nav-avatar-fallback {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-}
-
-.nav-avatar {
-  object-fit: cover;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.nav-avatar-fallback {
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-}
-
-.user-email {
-  color: #cbd5e1;
-  font-size: 0.85rem;
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.nav-btn {
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  text-decoration: none;
-  transition: all 0.2s;
-  cursor: pointer;
-  border: none;
-}
-
-.login-link {
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  color: white;
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
-}
-
-.admin-link {
-  background: rgba(99, 102, 241, 0.1);
-  color: #818cf8;
-  border: 1px solid rgba(99, 102, 241, 0.3) !important;
-}
-
-.logout-link {
-  background: transparent;
-  color: #94a3b8;
-  padding: 4px 8px;
-  font-size: 0.8rem;
-}
-
-.logout-link:hover {
-  color: #ef4444;
-}
-
-.nav-btn:hover:not(.logout-link) {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.3);
-}
-
-/* Custom Tooltip Style */
-.avatar-tooltip {
-  position: relative;
-  display: flex;
-}
-
-.avatar-tooltip::after {
-  content: attr(data-tooltip);
-  position: absolute;
-  top: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%) translateY(5px);
-  background: rgba(15, 23, 42, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #f1f5f9;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 0.75rem;
-  white-space: nowrap;
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  z-index: 50;
-}
-
-.avatar-tooltip::before {
-  content: '';
-  position: absolute;
-  bottom: -6px;
-  left: 50%;
-  transform: translateX(-50%) translateY(5px);
-  border-width: 5px;
-  border-style: solid;
-  border-color: transparent transparent rgba(15, 23, 42, 0.95) transparent;
-  opacity: 0;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-  z-index: 50;
-}
-
-.avatar-tooltip:hover::after,
-.avatar-tooltip:hover::before {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-</style>

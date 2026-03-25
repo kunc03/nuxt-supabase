@@ -1,6 +1,6 @@
 <script setup>
-import { computed } from 'vue'
-import { useCart } from '~/../composables/useCart'
+import { ref, computed } from 'vue'
+import { useCartStore } from '~/../composables/useCartStore'
 
 const props = defineProps({
   product: {
@@ -9,7 +9,23 @@ const props = defineProps({
   }
 })
 
-const { addToCart } = useCart()
+const router = useRouter()
+const user = useSupabaseUser()
+const cartStore = useCartStore()
+const isAddingToCart = ref(false)
+
+const addToCart = async (product) => {
+  if (!user.value) {
+    router.push('/login')
+    return
+  }
+
+  if (cartStore.isInCart(product.id)) return
+  
+  isAddingToCart.value = true
+  await cartStore.addToCart(product.id)
+  isAddingToCart.value = false
+}
 
 // Show only the last segment after ">" for cleaner badge display
 const categoryLabel = computed(() => {
@@ -23,7 +39,7 @@ const categoryLabel = computed(() => {
   <div class="card-link-wrapper">
     <NuxtLink :to="`/products/${product.id}`" class="product-card glass fade-in">
       <div class="image-container">
-        <img :src="product.image_url || product.image" :alt="product.title" class="product-image" loading="lazy" />
+        <img :src="product.images?.[0] || product.image_url" :alt="product.title" class="product-image" loading="lazy" />
         <div class="overlay">
           <span class="rating">★ {{ product.rate ?? product.rating?.rate }}</span>
         </div>
@@ -38,12 +54,8 @@ const categoryLabel = computed(() => {
             <span class="currency">Rp</span>
             <span class="price">{{ (product.price || 0).toLocaleString('id-ID') }}</span>
           </div>
-          <button @click.stop.prevent="addToCart(product)" class="cart-btn" title="Tambah ke Keranjang">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="9" cy="21" r="1"></circle>
-              <circle cx="20" cy="21" r="1"></circle>
-              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
-            </svg>
+          <button @click.stop.prevent="addToCart(product)" class="cart-btn" :class="{ 'added': cartStore.isInCart(product.id) }" :disabled="isAddingToCart || cartStore.isInCart(product.id)" :title="cartStore.isInCart(product.id) ? 'Sudah di Keranjang' : 'Tambah ke Keranjang'">
+            <CartIcon :is-added="cartStore.isInCart(product.id)" width="18" height="18" />
           </button>
         </div>
       </div>

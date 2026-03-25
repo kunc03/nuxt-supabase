@@ -1,24 +1,30 @@
 <script setup>
 import { ref, watch, onMounted, onUnmounted } from 'vue'
 import useApi from '~/../composables/useApi'
+import { useCartStore } from '~/../composables/useCartStore'
 
 const route = useRoute()
+const router = useRouter()
 const { fetchProduct } = useApi()
 const client = useSupabaseClient()
+const user = useSupabaseUser()
 
 // Ambil ID dari router params
 const productId = route.params.id
 
 // Fetch data produk
 const { data: product, pending, error } = await useAsyncData(`product-${productId}`, () => 
-  fetchProduct(productId)
+  fetchProduct(productId), { deep: false }
 )
 
 const viewerCount = ref(1)
 let channel = null
+const cartStore = useCartStore()
 
 // Realtime Presence & Live Update Setup
-onMounted(() => {
+onMounted(async () => {
+  cartStore.fetchCartProductIds()
+
   channel = client.channel(`product_views_${productId}`)
 
   // 1. Presence (Viewer Count)
@@ -62,6 +68,20 @@ watch(product, (newVal) => {
     selectedImage.value = newVal.images[0]
   }
 }, { immediate: true })
+
+// Add to Cart Logic
+const isAddingToCart = ref(false)
+
+const addToCart = async () => {
+  if (!user.value) {
+    router.push('/login')
+    return
+  }
+
+  isAddingToCart.value = true
+  await cartStore.addToCart(Number(productId) || productId)
+  isAddingToCart.value = false
+}
 </script>
 
 <template>
@@ -110,7 +130,7 @@ watch(product, (newVal) => {
               :class="{ active: selectedImage === img }"
               @click="selectedImage = img"
             >
-              <img :src="img" alt="Detail Thumb" />
+              <img :src="img" alt="Detail Thumb" loading="lazy" />
             </div>
           </div>
         </div>
@@ -148,9 +168,19 @@ watch(product, (newVal) => {
               </div>
             </div>
 
-            <button class="action-btn primary">
-              Beli Sekarang
-            </button>
+            <div class="action-buttons">
+              <button class="action-btn secondary icon-btn" @click="addToCart" :disabled="isAddingToCart || cartStore.isInCart(Number(productId) || productId)" :title="cartStore.isInCart(Number(productId) || productId) ? 'Sudah di Keranjang' : 'Simpan ke Keranjang'">
+                <template v-if="isAddingToCart">
+                  ...
+                </template>
+                <template v-else>
+                  <CartIcon :is-added="cartStore.isInCart(Number(productId) || productId)" width="24" height="24" />
+                </template>
+              </button>
+              <button class="action-btn primary">
+                Beli Sekarang
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -158,280 +188,4 @@ watch(product, (newVal) => {
   </div>
 </template>
 
-<style scoped>
-.header-section {
-  margin-bottom: 30px;
-  padding-top: 20px;
-}
-
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #94a3b8;
-  text-decoration: none;
-  font-size: 1rem;
-  transition: color 0.2s;
-}
-
-.back-link:hover {
-  color: #6366f1;
-}
-
-.ambient-glow {
-  position: absolute;
-  top: -100px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 700px;
-  height: 500px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.12) 0%, rgba(168, 85, 247, 0.08) 50%, transparent 100%);
-  filter: blur(60px);
-  z-index: -1;
-  pointer-events: none;
-}
-
-/* State Boxes */
-.loading-state, .error-state {
-  text-align: center;
-  padding: 60px;
-  color: #94a3b8;
-}
-
-.retry-btn {
-  display: inline-block;
-  margin-top: 16px;
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  color: white;
-  padding: 10px 24px;
-  border-radius: 12px;
-  text-decoration: none;
-}
-
-/* Product Detail Grid */
-.product-detail-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 40px;
-  align-items: start;
-}
-
-/* Image Gallery Section */
-.image-gallery-section {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.main-image-box {
-  position: relative;
-  background: white;
-  border-radius: 24px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-  height: 450px;
-}
-
-.product-image {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.thumbnails-grid {
-  display: flex;
-  gap: 12px;
-  overflow-x: auto;
-  padding: 4px;
-}
-
-.thumb-item {
-  width: 70px;
-  height: 70px;
-  border-radius: 12px;
-  background: white;
-  padding: 0;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.2s ease;
-  flex-shrink: 0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden;
-}
-
-.thumb-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.thumb-item.active {
-  border-color: #6366f1;
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
-}
-
-.overlay {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-}
-
-.rating {
-  background: rgba(15, 23, 42, 0.82);
-  backdrop-filter: blur(4px);
-  color: #fbbf24;
-  padding: 6px 14px;
-  border-radius: 20px;
-  font-size: 0.95rem;
-  font-weight: 600;
-  border: 1px solid rgba(251, 191, 36, 0.2);
-}
-
-/* Info Section */
-.info-section {
-  padding: 35px;
-  border-radius: 24px;
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.category-badge {
-  display: inline-block;
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  color: #6366f1;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-  margin-bottom: 12px;
-}
-
-.product-title {
-  font-size: 2.25rem;
-  font-weight: 800;
-  color: #f8fafc;
-  line-height: 1.2;
-  margin-bottom: 8px;
-}
-
-.product-subtitle {
-  font-size: 1.1rem;
-  font-style: italic;
-  color: #a855f7;
-  margin-bottom: 24px;
-}
-
-.section-heading {
-  font-size: 1rem;
-  font-weight: 600;
-  color: #f8fafc;
-  margin-bottom: 12px;
-}
-
-.product-description {
-  color: #94a3b8;
-  font-size: 1rem;
-  line-height: 1.6;
-  margin-bottom: 30px;
-}
-
-.stats-row {
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  padding-top: 20px;
-  margin-bottom: auto;
-  display: flex;
-  gap: 30px;
-}
-
-.stat-item {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.stat-label {
-  font-size: 0.85rem;
-  color: #64748b;
-}
-
-.stat-value {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #e2e8f0;
-}
-
-.viewers-count {
-  color: #f97316;
-  font-weight: 700;
-}
-
-/* Footer Section */
-.content-footer {
-  margin-top: 30px;
-  padding-top: 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-}
-
-.price-label {
-  font-size: 0.9rem;
-  color: #94a3b8;
-  margin-bottom: 4px;
-  display: block;
-}
-
-.price-tag {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.currency {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #a855f7;
-}
-
-.price {
-  font-size: 2rem;
-  font-weight: 800;
-  color: #f8fafc;
-}
-
-.action-btn {
-  background: linear-gradient(135deg, #6366f1, #a855f7);
-  color: white;
-  padding: 16px 32px;
-  border-radius: 16px;
-  font-weight: bold;
-  font-size: 1.1rem;
-  cursor: pointer;
-  border: none;
-  flex: 1;
-  text-align: center;
-  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
-  transition: transform 0.2s, box-shadow 0.2s;
-}
-
-.action-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.5);
-}
-
-@media (max-width: 900px) {
-  .product-detail-grid {
-    grid-template-columns: 1fr;
-    gap: 24px;
-  }
-  .image-section {
-    height: 350px;
-  }
-}
-</style>
+<style scoped src="~/assets/css/pages/product-detail.css"></style>
