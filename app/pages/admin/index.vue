@@ -12,19 +12,48 @@ let channel = null
 
 // Auth Guard & Realtime Setup
 onMounted(() => {
-  if (!user.value) {
+  const hasAuthCallback = window.location.hash.includes('access_token') || window.location.hash.includes('error')
+
+  if (!user.value && !hasAuthCallback) {
     router.push('/login')
     return
   }
 
-  // Realtime subscription
+  if (user.value) {
+    // Validasi Role Admin
+    if (user.value.user_metadata?.role !== 'admin') {
+      router.push('/')
+      return
+    }
+    loadProducts()
+  }
+
   channel = client
     .channel('public:products-admin')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
-      // If view is list, reloading is good.
       loadProducts() 
     })
     .subscribe()
+})
+
+watch(user, (newUser) => {
+  if (newUser) {
+    // Validasi Role Admin
+    if (newUser.user_metadata?.role !== 'admin') {
+      router.push('/')
+      return
+    }
+    
+    // Beri jeda sedikit untuk memastikan header session sudah sinkron
+    setTimeout(() => {
+      loadProducts()
+    }, 200)
+  } else {
+    const hasAuthCallback = window.location.hash.includes('access_token') || window.location.hash.includes('error')
+    if (!hasAuthCallback) {
+      router.push('/login')
+    }
+  }
 })
 
 onUnmounted(() => {
@@ -81,12 +110,12 @@ const loadProducts = async () => {
   try {
     products.value = await fetchProducts()
   } catch (error) {
+    console.error('Gagal memuat produk:', error)
+    message.value = { text: 'Gagal memuat produk: ' + (error.message || error), type: 'error' }
   } finally {
     productsPending.value = false
   }
 }
-
-onMounted(loadProducts)
 
 const handleLogout = async () => {
   await client.auth.signOut()
