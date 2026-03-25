@@ -33,6 +33,40 @@ const errors = ref({
   rate: ''
 })
 
+const client = useSupabaseClient()
+const uploading = ref(false)
+const uploadError = ref('')
+
+const handleFileUpload = async (event) => {
+  const file = event.target.files?.[0]
+  if (!file) return
+
+  uploading.value = true
+  uploadError.value = ''
+
+  try {
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+    const filePath = `${fileName}` // Langsung di root bucket 'products'
+
+    const { data, error } = await client.storage
+      .from('products')
+      .upload(filePath, file)
+
+    if (error) throw error
+
+    const { data: { publicUrl } } = client.storage
+      .from('products')
+      .getPublicUrl(filePath)
+
+    form.value.image_url = publicUrl
+  } catch (error) {
+    uploadError.value = 'Gagal mengunggah gambar: ' + error.message
+  } finally {
+    uploading.value = false
+  }
+}
+
 const handleSubmit = () => {
   // Reset errors
   Object.keys(errors.value).forEach(key => errors.value[key] = '')
@@ -62,6 +96,48 @@ const handleSubmit = () => {
     ...form.value, 
     imagesText: imagesText.value 
   })
+}
+const uploadingMultiple = ref(false)
+const uploadMultipleError = ref('')
+
+const handleMultipleFilesUpload = async (event) => {
+  const files = event.target.files
+  if (!files || files.length === 0) return
+
+  uploadingMultiple.value = true
+  uploadMultipleError.value = ''
+
+  const uploadedUrls = []
+
+  try {
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+      const filePath = `${fileName}`
+
+      const { data, error } = await client.storage
+        .from('products')
+        .upload(filePath, file)
+
+      if (error) throw error
+
+      const { data: { publicUrl } } = client.storage
+        .from('products')
+        .getPublicUrl(filePath)
+
+      uploadedUrls.push(publicUrl)
+    }
+
+    const currentText = imagesText.value ? imagesText.value.trim() : ''
+    const newUrls = uploadedUrls.join('\n')
+    imagesText.value = currentText ? `${currentText}\n${newUrls}` : newUrls
+
+  } catch (error) {
+    uploadMultipleError.value = 'Gagal mengunggah beberapa gambar: ' + error.message
+  } finally {
+    uploadingMultiple.value = false
+  }
 }
 </script>
 
@@ -99,17 +175,39 @@ const handleSubmit = () => {
         </div>
 
         <div class="form-group">
-          <label for="image_url">Image URL <span class="required">*</span></label>
-          <input type="url" id="image_url" v-model="form.image_url" placeholder="https://example.com/image.jpg" />
+          <label for="image_url">Image <span class="required">*</span></label>
+          <div class="image-input-container">
+            <input type="url" id="image_url" v-model="form.image_url" placeholder="https://example.com/image.jpg" class="url-input" />
+            <div class="upload-trigger">
+              <input type="file" id="file_upload" @change="handleFileUpload" accept="image/*" class="hidden-file-input" />
+              <label for="file_upload" class="upload-btn" :class="{ 'uploading': uploading }">
+                <span>{{ uploading ? 'Uploading...' : 'Upload File' }}</span>
+              </label>
+            </div>
+          </div>
+          <!-- Preview Image -->
+          <div v-if="form.image_url" class="image-preview-container">
+            <img :src="form.image_url" alt="Preview Gambar" class="image-preview" />
+          </div>
           <span class="error-msg" v-if="errors.image_url">{{ errors.image_url }}</span>
+          <span class="error-msg" v-if="uploadError">{{ uploadError }}</span>
         </div>
       </div>
 
       <!-- Detail Images Array Input -->
       <div class="form-group">
         <label for="images">Detail Images (Satu URL per baris) <span class="required">*</span></label>
-        <textarea id="images" v-model="imagesText" rows="3" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"></textarea>
+        <div class="textarea-upload-container">
+          <textarea id="images" v-model="imagesText" rows="4" placeholder="https://example.com/image1.jpg&#10;https://example.com/image2.jpg"></textarea>
+          <div class="upload-trigger">
+            <input type="file" id="multiple_upload" @change="handleMultipleFilesUpload" accept="image/*" multiple class="hidden-file-input" />
+            <label for="multiple_upload" class="upload-btn" :class="{ 'uploading': uploadingMultiple }">
+              <span>{{ uploadingMultiple ? 'Uploading...' : '📁 Upload Banyak Gambar' }}</span>
+            </label>
+          </div>
+        </div>
         <span class="error-msg" v-if="errors.imagesText">{{ errors.imagesText }}</span>
+        <span class="error-msg" v-if="uploadMultipleError">{{ uploadMultipleError }}</span>
       </div>
 
       <div class="form-grid three-cols">
@@ -152,5 +250,80 @@ const handleSubmit = () => {
   font-size: 0.75rem;
   margin-top: 4px;
   display: block;
+}
+
+/* Modifikasi Baru untuk Upload Gambar */
+.image-input-container {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.url-input {
+  flex: 1;
+}
+
+.upload-trigger {
+  position: relative;
+}
+
+.hidden-file-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #f8fafc;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.upload-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #6366f1;
+}
+
+.upload-btn.uploading {
+  opacity: 0.7;
+  cursor: not-allowed;
+  background: rgba(100, 100, 100, 0.2);
+}
+
+.image-preview-container {
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  max-width: 200px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.image-preview {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+.textarea-upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.textarea-upload-container .upload-btn {
+  align-self: flex-start;
 }
 </style>
