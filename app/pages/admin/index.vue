@@ -21,7 +21,6 @@ onMounted(() => {
   channel = client
     .channel('public:products-admin')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
-      console.log('Admin Realtime update:', payload)
       // If view is list, reloading is good.
       loadProducts() 
     })
@@ -72,12 +71,16 @@ const form = ref({
 const loading = ref(false)
 const message = ref({ text: '', type: '' })
 
+// Confirmation Modal States
+const isDeleteModalOpen = ref(false)
+const isBulkDeleteModalOpen = ref(false)
+const productToDeleteId = ref(null)
+
 const loadProducts = async () => {
   productsPending.value = true
   try {
     products.value = await fetchProducts()
   } catch (error) {
-    console.error('Error fetching products:', error)
   } finally {
     productsPending.value = false
   }
@@ -133,33 +136,34 @@ const resetForm = () => {
   imagesText.value = '' // <--- Reset gambar detail
 }
 
-const handleDelete = async (id) => {
-  if (!confirm('Apakah Anda yakin ingin menghapus produk ini?')) return
+const handleDelete = (id) => {
+  productToDeleteId.value = id
+  isDeleteModalOpen.value = true
+}
+
+const confirmDeleteProduct = async () => {
+  if (!productToDeleteId.value) return
 
   loading.value = true
   message.value = { text: '', type: '' }
 
   try {
-    await deleteProduct(id)
+    await deleteProduct(productToDeleteId.value)
     message.value = { text: 'Produk berhasil dihapus!', type: 'success' }
     await loadProducts()
     setTimeout(() => {
       message.value = { text: '', type: '' }
     }, 2000)
   } catch (error) {
-    console.error('Error deleting product:', error)
     message.value = { text: 'Gagal menghapus produk: ' + error.message, type: 'error' }
   } finally {
     loading.value = false
+    isDeleteModalOpen.value = false
+    productToDeleteId.value = null
   }
 }
 
 const handleFormSubmit = async (payload) => {
-  if (!payload.title) {
-    message.value = { text: 'Title wajib diisi!', type: 'error' }
-    return
-  }
-
   loading.value = true
   message.value = { text: '', type: '' }
 
@@ -188,7 +192,6 @@ const handleFormSubmit = async (payload) => {
       message.value = { text: '', type: '' }
     }, 1500)
   } catch (error) {
-    console.error('Error saving product:', error)
     message.value = { text: error.message || 'Gagal menyimpan produk.', type: 'error' }
   } finally {
     loading.value = false
@@ -244,7 +247,6 @@ const handleExcelUpload = async (event) => {
       message.value = { text: `Berhasil mengimpor ${productsData.length} produk!`, type: 'success' };
       await loadProducts();
     } catch (error) {
-      console.error('Error importing excel:', error);
       message.value = { text: 'Gagal mengimpor excel: ' + error.message, type: 'error' };
     } finally {
       importLoading.value = false;
@@ -276,21 +278,23 @@ const isAllSelected = computed({
   }
 })
 
-const handleBulkDelete = async () => {
-  if (selectedProducts.value.length === 0) return;
-  if (!confirm(`Apakah Anda yakin ingin menghapus ${selectedProducts.value.length} produk terpilih?`)) return;
+const handleBulkDelete = () => {
+  if (selectedProducts.value.length === 0) return
+  isBulkDeleteModalOpen.value = true
+}
 
-  loading.value = true;
+const confirmBulkDelete = async () => {
+  loading.value = true
   try {
-    await deleteProduct(selectedProducts.value);
-    selectedProducts.value = []; // Clear selection
-    message.value = { text: 'Produk berhasil dihapus secara massal!', type: 'success' };
-    await loadProducts();
+    await deleteProduct(selectedProducts.value)
+    selectedProducts.value = [] // Clear selection
+    message.value = { text: 'Produk berhasil dihapus secara massal!', type: 'success' }
+    await loadProducts()
   } catch (error) {
-    console.error('Error bulk deleting:', error);
-    message.value = { text: 'Gagal menghapus secara massal: ' + error.message, type: 'error' };
+    message.value = { text: 'Gagal menghapus secara massal: ' + error.message, type: 'error' }
   } finally {
-    loading.value = false;
+    loading.value = false
+    isBulkDeleteModalOpen.value = false
   }
 }
 </script>
@@ -399,6 +403,25 @@ const handleBulkDelete = async () => {
         />
       </div>
     </main>
+
+    <!-- Confirmation Modals -->
+    <MoleculesConfirmModal 
+      v-model="isDeleteModalOpen"
+      title="Hapus Produk"
+      message="Apakah Anda yakin ingin menghapus produk ini? Tindakan ini tidak dapat dibatalkan."
+      confirmText="Hapus"
+      :loading="loading"
+      @confirm="confirmDeleteProduct"
+    />
+
+    <MoleculesConfirmModal 
+      v-model="isBulkDeleteModalOpen"
+      title="Hapus Massal"
+      :message="`Apakah Anda yakin ingin menghapus ${selectedProducts.length} produk terpilih?`"
+      confirmText="Hapus"
+      :loading="loading"
+      @confirm="confirmBulkDelete"
+    />
   </div>
 </template>
 

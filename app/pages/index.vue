@@ -17,7 +17,6 @@ onMounted(() => {
   channel = supabase
     .channel('public:products')
     .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, (payload) => {
-      console.log('Realtime update:', payload)
       refresh() // Trigger useAsyncData refresh
     })
     .subscribe()

@@ -52,7 +52,6 @@ serve(async (req: Request) => {
         });
     }
   } catch (error: any) {
-    console.error("Error in Edge Function:", error.message);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 400,

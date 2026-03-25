@@ -41,7 +41,6 @@ const handleSubmit = async () => {
     window.location.href = '/admin'
     return
   } catch (error) {
-    console.error('Login error:', error)
     errorMessage.value = error.message || 'Gagal login. Periksa email dan password Anda.'
   } finally {
     loading.value = false

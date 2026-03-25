@@ -34,7 +34,6 @@ onMounted(() => {
       table: 'products', 
       filter: `id=eq.${productId}` 
     }, (payload) => {
-      console.log('Product Live Update:', payload)
       if (product.value) {
         // Merge updates
         product.value = { ...product.value, ...payload.new }
