@@ -105,10 +105,29 @@ const isDeleteModalOpen = ref(false)
 const isBulkDeleteModalOpen = ref(false)
 const productToDeleteId = ref(null)
 
+// Statistika Dashboard
+const stats = ref({
+  total_products: 0,
+  total_stock_value: 0,
+  out_of_stock: 0,
+  avg_rating: 0
+})
+
+const fetchStats = async () => {
+  try {
+    const { data, error } = await client.rpc('get_admin_stats')
+    if (error) throw error
+    if (data) stats.value = data
+  } catch (err) {
+    console.error('Gagal memuat statistik:', err)
+  }
+}
+
 const loadProducts = async () => {
   productsPending.value = true
   try {
     products.value = await fetchProducts()
+    await fetchStats() // Ambil statistik bersamaan
   } catch (error) {
     console.error('Gagal memuat produk:', error)
     message.value = { text: 'Gagal memuat produk: ' + (error.message || error), type: 'error' }
@@ -353,6 +372,39 @@ const confirmBulkDelete = async () => {
 
       <!-- List View -->
       <div v-if="currentView === 'list'" class="view-container">
+        
+        <!-- Dashboard Stats Grid -->
+        <div class="stats-grid">
+          <div class="stat-card glass-card">
+            <div class="stat-icon">📦</div>
+            <div class="stat-info">
+              <span class="stat-label">Total Produk</span>
+              <span class="stat-value">{{ stats.total_products }}</span>
+            </div>
+          </div>
+          <div class="stat-card glass-card">
+            <div class="stat-icon">💰</div>
+            <div class="stat-info">
+              <span class="stat-label">Estimasi Aset</span>
+              <span class="stat-value">Rp {{ stats.total_stock_value?.toLocaleString('id-ID') }}</span>
+            </div>
+          </div>
+          <div class="stat-card glass-card">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-info">
+              <span class="stat-label">Stok Habis</span>
+              <span class="stat-value" :class="{ 'warning': stats.out_of_stock > 0 }">{{ stats.out_of_stock }}</span>
+            </div>
+          </div>
+          <div class="stat-card glass-card">
+            <div class="stat-icon">⭐</div>
+            <div class="stat-info">
+              <span class="stat-label">Avg Rating</span>
+              <span class="stat-value">{{ stats.avg_rating }}<span class="stat-max">/5</span></span>
+            </div>
+          </div>
+        </div>
+
         <div class="view-header">
           <h2 class="section-title">Daftar Produk</h2>
           <div class="header-buttons">
@@ -384,7 +436,7 @@ const confirmBulkDelete = async () => {
           />
 
           <div class="products-list glass">
-            <div v-for="product in paginatedProducts" :key="product.id" class="product-item">
+            <div v-for="product in paginatedProducts" :key="product.id" :class="['product-item', { 'is-out-of-stock': product.stock === 0 }]">
               <div class="select-checkbox">
                 <label class="checkbox-container">
                   <input type="checkbox" :value="product.id" v-model="selectedProducts" />
@@ -392,12 +444,15 @@ const confirmBulkDelete = async () => {
                 </label>
               </div>
               <div class="product-img">
-              <img :src="product.image_url || 'https://via.placeholder.com/60'" alt="Product Image" />
-            </div>
-            <div class="product-info">
-              <h3 class="product-title">{{ product.title }}</h3>
-              <p class="product-category">{{ product.category || 'Tanpa Kategori' }}</p>
-            </div>
+                <img :src="product.image_url || 'https://via.placeholder.com/60'" alt="Product Image" />
+              </div>
+              <div class="product-info">
+                <h3 class="product-title">
+                  {{ product.title }}
+                  <span v-if="product.stock === 0" class="out-of-stock-badge">Habis</span>
+                </h3>
+                <p class="product-category">{{ product.category || 'Tanpa Kategori' }}</p>
+              </div>
             <div class="product-price">
               IDR {{ product.price ? product.price.toLocaleString() : '-' }}
             </div>
@@ -455,3 +510,103 @@ const confirmBulkDelete = async () => {
 </template>
 
 <style scoped src="~/assets/css/pages/admin.css"></style>
+
+<style scoped>
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 16px;
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  transition: all 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  background: rgba(30, 41, 59, 0.6);
+  border-color: rgba(99, 102, 241, 0.2);
+}
+
+.stat-icon {
+  font-size: 2rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 12px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.stat-value {
+  color: #f8fafc;
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.stat-value.warning {
+  color: #f59e0b;
+}
+
+.stat-max {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 400;
+}
+
+@media (max-width: 640px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Out of Stock Indicators */
+.product-item.is-out-of-stock {
+  opacity: 0.75;
+  background: rgba(239, 68, 68, 0.02);
+}
+
+.product-item.is-out-of-stock .product-img {
+  filter: grayscale(0.5);
+}
+
+.out-of-stock-badge {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #f87171;
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+</style>
