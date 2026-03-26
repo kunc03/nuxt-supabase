@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useCartStore } from '~/../composables/useCartStore'
 
 // SEO Meta
@@ -9,11 +10,14 @@ useSeoMeta({
   description: 'Selesaikan pesanan Anda dengan aman dan cepat.',
 })
 
-const { pending, cartItems, fetchCartItems, removeFromCart, updateQuantity, checkoutCart } = useCartStore()
+const store = useCartStore()
+const { cartItems, pending } = storeToRefs(store)
+const { fetchCartItems, removeFromCart, updateQuantity, checkoutCart } = store
 
 onMounted(() => {
   fetchCartItems()
 })
+
 
 const showConfirmModal = ref(false)
 const itemToDelete = ref(null)
@@ -41,7 +45,7 @@ const updateItemQuantity = async (cartId, newQuantity) => {
 }
 
 const totalPrice = computed(() => {
-  return cartItems.value.reduce((total, item) => {
+  return (cartItems.value || []).reduce((total, item) => {
     const price = item.products?.price || 0
     return total + (price * item.quantity)
   }, 0)
