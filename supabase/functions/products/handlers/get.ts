@@ -20,7 +20,11 @@ export const handleGet = async (
     });
   } else {
     try {
-      let query = supabaseClient.from("products").select("*");
+      // Memastikan produk terbaru atau yang baru diupdate muncul paling atas
+      let query = supabaseClient
+        .from("products")
+        .select("*")
+        .order("updated_at", { ascending: false });
       
       if (q) {
         // Ganti tanda koma (jika ada) degan spasi agar tidak merusak logika pohon/tree .or() Postgrest

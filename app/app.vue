@@ -1,5 +1,6 @@
 <template>
   <div class="app-root">
+    <div class="ambient-glow"></div>
     <NuxtRouteAnnouncer />
     <NuxtPage />
   </div>

@@ -2,6 +2,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useCartStore } from '~/../composables/useCartStore'
 
+// SEO Meta
+useSeoMeta({
+  title: 'Keranjang Belanja | Premium Catalog',
+  ogTitle: 'Keranjang Belanja | Premium Catalog',
+  description: 'Selesaikan pesanan Anda dengan aman dan cepat.',
+})
+
 const { pending, cartItems, fetchCartItems, removeFromCart, updateQuantity, checkoutCart } = useCartStore()
 
 onMounted(() => {
@@ -55,7 +62,6 @@ const handleCheckout = async () => {
 
 <template>
   <div class="page-container">
-    <div class="ambient-glow"></div>
 
     <header class="header-section fade-in">
       <NuxtLink to="/" class="back-link">
@@ -91,7 +97,15 @@ const handleCheckout = async () => {
         <div class="cart-items-section glass">
           <div v-for="item in cartItems" :key="item.id" class="cart-item">
             <div class="item-image-box">
-               <img :src="item.products?.images?.[0] || item.products?.image_url" :alt="item.products?.title" class="item-image" loading="lazy" />
+               <NuxtImg 
+                  :src="item.products?.images?.[0] || item.products?.image_url" 
+                  :alt="item.products?.title" 
+                  class="item-image" 
+                  loading="lazy" 
+                  format="webp" 
+                  width="100"
+                  height="100"
+               />
             </div>
             
             <div class="item-details">

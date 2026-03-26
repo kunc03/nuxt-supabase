@@ -1,17 +1,16 @@
-import { useState } from "#imports";
+import { defineStore } from "pinia";
+import { ref } from "vue";
+import { useSupabaseClient, useSupabaseUser } from "#imports";
 
-export const useCartStore = () => {
+export const useCartStore = defineStore("cart", () => {
   const client = useSupabaseClient<any>();
   const user = useSupabaseUser();
 
   // Full items for cart page
-  const cartItems = useState<any[]>("global-cart-items", () => []);
+  const cartItems = ref<any[]>([]);
   // Just product IDs for quick checks on listing/cards
-  const cartProductIds = useState<number[]>(
-    "global-cart-product-ids",
-    () => [],
-  );
-  const pending = useState<boolean>("global-cart-pending", () => false);
+  const cartProductIds = ref<number[]>([]);
+  const pending = ref<boolean>(false);
 
   const clearCart = () => {
     cartItems.value = [];
@@ -120,9 +119,6 @@ export const useCartStore = () => {
             quantity: 1,
           });
         if (insertError) throw insertError;
-
-        // In a real app we might fetch the new item to join with products
-        // For robustness, calling fetchCartProductIds if needed, but optimistic UI handled it above.
       }
       return true;
     } catch (error) {
@@ -207,4 +203,6 @@ export const useCartStore = () => {
     clearCart,
     checkoutCart,
   };
-};
+}, {
+  persist: true,
+});

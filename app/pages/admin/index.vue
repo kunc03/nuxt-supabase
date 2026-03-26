@@ -264,17 +264,9 @@ const handleFormSubmit = async (payload) => {
     if (isEditing.value) {
       await updateProduct(selectedProductId.value, formattedPayload)
       message.value = { text: 'Produk berhasil diperbarui!', type: 'success' }
-      try {
-        await generateEmbedding(selectedProductId.value, `${formattedPayload.title} ${formattedPayload.description || ''}`)
-      } catch (err) { console.error('Gagal generate embedding:', err) }
     } else {
-      const newProduct = await addProduct(formattedPayload)
+      await addProduct(formattedPayload)
       message.value = { text: 'Produk berhasil ditambahkan!', type: 'success' }
-      if (newProduct && newProduct.length > 0) {
-        try {
-          await generateEmbedding(newProduct[0].id, `${formattedPayload.title} ${formattedPayload.description || ''}`)
-        } catch (err) { console.error('Gagal generate embedding:', err) }
-      }
     }
     
     await loadProducts()

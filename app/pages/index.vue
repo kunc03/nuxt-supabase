@@ -3,6 +3,16 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import useApi from '~/../composables/useApi'
 import { useCartStore } from '~/../composables/useCartStore'
 
+// SEO Meta
+useSeoMeta({
+  title: 'Home | Modern Glassmorphism Catalog',
+  ogTitle: 'Home | Modern Glassmorphism Catalog',
+  description: 'Temukan produk impian Anda dengan desain modern dan premium.',
+  ogDescription: 'Temukan produk impian Anda dengan desain modern dan premium.',
+  ogImage: '/og-image.png',
+  twitterCard: 'summary_large_image',
+})
+
 // supabase 
 const { fetchProducts } = useApi();
 const supabase = useSupabaseClient();
@@ -22,7 +32,7 @@ const { data: productsSupabase, pending, refresh } = await useAsyncData('product
 )
 
 const cartStore = useCartStore()
-const cartProductIds = cartStore.cartProductIds
+const cartProductIds = computed(() => cartStore.cartProductIds)
 
 let channel = null;
 
@@ -180,6 +190,11 @@ watch(currentPage, () => {
           <p>No products found in this category.</p>
         </div>
       </section>
+
+      <!-- Nuxt Island Demo -->
+      <!-- <section class="mt-20 mb-10 px-4" v-motion-fade-visible-once>
+        <StaticDescription />
+      </section> -->
     </main>
   </div>
 </template>

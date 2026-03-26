@@ -17,6 +17,19 @@ const { data: product, pending, error } = await useAsyncData(`product-${productI
   fetchProduct(productId), { deep: false }
 )
 
+// SEO Meta
+watch(product, (p) => {
+  if (p) {
+    useSeoMeta({
+      title: `${p.title} | Premium Catalog`,
+      ogTitle: `${p.title} | Premium Catalog`,
+      description: p.description || p.sub_title,
+      ogDescription: p.description || p.sub_title,
+      ogImage: p.images?.[0] || p.image_url,
+    })
+  }
+}, { immediate: true })
+
 const viewerCount = ref(1)
 let channel = null
 const cartStore = useCartStore()
@@ -98,7 +111,6 @@ const buyNow = async () => {
 
 <template>
   <div class="page-container">
-    <div class="ambient-glow"></div>
 
     <!-- Back Navigation -->
     <header class="header-section fade-in">
@@ -124,9 +136,16 @@ const buyNow = async () => {
 
       <div v-else class="product-detail-grid">
         <!-- Left: Image Section & Gallery -->
-        <div class="image-gallery-section">
+        <div class="image-gallery-section" v-motion-fade-visible-once>
           <div class="main-image-box glass">
-            <img :src="selectedImage || (product.images?.length > 0 ? product.images[0] : '')" :alt="product.title" class="product-image" />
+            <NuxtImg 
+              :src="selectedImage || (product.images?.length > 0 ? product.images[0] : '')" 
+              :alt="product.title" 
+              class="product-image" 
+              format="webp"
+              placeholder
+              loading="lazy"
+            />
             <div class="overlay">
               <span class="rating">★ {{ product.rate ?? '0' }}</span>
             </div>
@@ -142,7 +161,7 @@ const buyNow = async () => {
               :class="{ active: selectedImage === img }"
               @click="selectedImage = img"
             >
-              <img :src="img" alt="Detail Thumb" loading="lazy" />
+              <NuxtImg :src="img" alt="Detail Thumb" loading="lazy" format="webp" />
             </div>
           </div>
         </div>

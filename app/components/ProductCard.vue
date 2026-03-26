@@ -36,10 +36,19 @@ const categoryLabel = computed(() => {
 </script>
 
 <template>
-  <div class="card-link-wrapper">
-    <NuxtLink :to="`/products/${product.id}`" class="product-card glass fade-in">
+  <div class="card-link-wrapper" v-motion-fade-visible-once>
+    <NuxtLink :to="`/products/${product.id}`" class="product-card glass">
       <div class="image-container">
-        <img :src="product.images?.[0] || product.image_url" :alt="product.title" class="product-image" loading="lazy" />
+        <NuxtImg 
+          :src="product.images?.[0] || product.image_url" 
+          :alt="product.title" 
+          class="product-image" 
+          loading="lazy" 
+          format="webp"
+          width="300"
+          height="300"
+          placeholder
+        />
         <div class="overlay">
           <span class="rating">★ {{ product.rate ?? product.rating?.rate }}</span>
         </div>

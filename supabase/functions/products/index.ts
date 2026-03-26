@@ -6,6 +6,9 @@ import { handlePost } from "./handlers/post.ts";
 import { handlePut } from "./handlers/put.ts";
 import { handleDelete } from "./handlers/delete.ts";
 
+declare const Supabase: any;
+const aiSession = new Supabase.ai.Session('gte-small');
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -41,9 +44,9 @@ serve(async (req: Request) => {
       case "GET":
         return await handleGet(req, supabaseClient, id, q);
       case "POST":
-        return await handlePost(req, supabaseClient);
+        return await handlePost(req, supabaseClient, aiSession);
       case "PUT":
-        return await handlePut(req, supabaseClient, id);
+        return await handlePut(req, supabaseClient, id, aiSession);
       case "DELETE":
         return await handleDelete(req, supabaseClient, id);
       default:

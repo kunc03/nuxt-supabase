@@ -16,7 +16,30 @@ export default defineNuxtConfig({
 
   modules: [
     "@nuxtjs/supabase",
+    "@pinia/nuxt",
+    "@pinia-plugin-persistedstate/nuxt",
+    "@nuxt/image",
+    "@nuxtjs/seo",
+    "@vueuse/motion/nuxt",
   ],
+
+  image: {
+    format: ["webp", "avif"],
+    screens: {
+      xs: 320,
+      sm: 640,
+      md: 768,
+      lg: 1024,
+      xl: 1280,
+    },
+  },
+
+  site: {
+    url: "https://your-domain.com", // Ganti dengan domain asli nanti
+    name: "Glassmorphism Product Catalog",
+    description: "Katalog produk modern dengan Nuxt 4 dan Supabase",
+    defaultLocale: "id",
+  },
 
   supabase: {
     redirect: false, // Kita handle redirect manual di client
