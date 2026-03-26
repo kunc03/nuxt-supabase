@@ -17,7 +17,6 @@ export default defineNuxtConfig({
   modules: [
     "@nuxtjs/supabase",
     "@pinia/nuxt",
-    "@pinia-plugin-persistedstate/nuxt",
     "@nuxt/image",
     "@nuxtjs/seo",
     "@vueuse/motion/nuxt",
